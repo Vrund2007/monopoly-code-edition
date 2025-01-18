@@ -1,8 +1,8 @@
-import java.util.*;
+import java.util.Scanner;
 
-class Main {
+public class Main {
     public static void main(String[] args) {
-        System.out.println("Welcome to Codeopoly - Code empire, fix the errors, and win👑");
+        System.out.println("Welcome to Codeopoly!");
 
         Game game = new Game();
         game.startGame();
@@ -42,6 +42,19 @@ class Game {
             }
 
             System.out.println("\nIt's " + currentPlayer.getName() + "'s turn!");
+
+            // Check if player has properties to upgrade
+            if (currentPlayer.hasProperties()) {
+                // Ask for upgrade option before rolling the dice
+                System.out.print("Do you want to upgrade a property? (yes/no): ");
+                String upgradeChoice = sc.nextLine();
+                if (upgradeChoice.equalsIgnoreCase("yes")) {
+                    upgradeProperty(sc, currentPlayer);
+                }
+            } else {
+                System.out.println("You have no properties to upgrade.");
+            }
+
             System.out.print("Press ENTER to roll the dice...");
             sc.nextLine();
             System.out.println();
@@ -70,22 +83,19 @@ class Game {
                         if (choice.equalsIgnoreCase("yes")) {
                             currentPlayer.updateBalance(-currentSpace.getCost());
                             currentSpace.setOwner(currentPlayer);
+                            currentPlayer.addProperty(currentSpace); // Add property to player
                             System.out.println(currentPlayer.getName() + " bought " + currentSpace.getName() + "!");
-                            System.out.println("The property cost: " + currentSpace.getCost());
                             System.out.println("Remaining balance: " + currentPlayer.getBalance());
                             System.out.println();
                         }
-                    } 
-                    else {
+                    } else {
                         System.out.println("You don't have enough money to buy this property.");
-                        System.out.println();
                     }
-                } 
-                else {
+                } else {
                     Player propertyOwner = currentSpace.getOwner();
                     System.out.println("The property is owned by " + propertyOwner.getName() + ".");
 
-                    if (propertyOwner != currentPlayer) { // Check if the owner is not the current player
+                    if (propertyOwner != currentPlayer) {
                         int rent = currentSpace.getRent();
                         System.out.println("You need to pay a rent of " + rent + ".");
 
@@ -97,38 +107,15 @@ class Game {
                             System.out.println(currentPlayer.getName() + " cannot afford the rent of " + rent + ".");
                             handleBankruptcy(currentPlayer, propertyOwner);
                         }
-                    } 
-                    else {
-                        System.out.println("This is your own property. Enjoy your stay!");
-                        if (currentSpace.canUpgrade()) {
-
-                            System.out.print("Do you want to upgrade this property? (yes/no): ");
-                            String upgradeChoice = sc.nextLine();
-
-                            if (upgradeChoice.equalsIgnoreCase("yes")) {
-
-                                int upgradeCost = currentSpace.getCost() / 2; // Cost of upgrading property (e.g., half the cost of the property)
-
-                                if (currentPlayer.getBalance() >= upgradeCost) {
-
-                                    currentPlayer.updateBalance(-upgradeCost);
-                                    currentSpace.upgradeProperty();
-
-                                } else {
-                                    System.out.println("You don't have enough money to upgrade the property.");
-                                }
-                            }
-                        } 
-                        else {
-                            System.out.println("This property cannot be upgraded further.");
-                        }
+                    } else {
+                        System.out.println("This is your own property.");
                     }
                 }
             } else {
                 System.out.println("This space is a special tile (e.g., Start, Income Tax, Jail, etc.).");
             }
 
-            // Check for game over
+            // Check for game over condition
             int activePlayersCount = 0;
             for (Player player : players) {
                 if (!player.isBankrupt()) {
@@ -171,25 +158,83 @@ class Game {
         // Set the player as bankrupt
         bankruptPlayer.setBankrupt(true);
     }
-}
 
+    void upgradeProperty(Scanner sc, Player player) {
+        // List owned properties
+        System.out.println("You own the following properties. Please enter the property number to upgrade: ");
+        for (int i = 0; i < player.propertyCount; i++) {
+            System.out.println((i + 1) + ". " + player.ownedProperties[i].getName());
+        }
+
+        System.out.print("Your Choice: ");
+        int propertyChoice = Integer.parseInt(sc.nextLine()) - 1;
+        if (propertyChoice >= 0 && propertyChoice < player.propertyCount) {
+            Property selectedProperty = player.ownedProperties[propertyChoice];
+
+            if (selectedProperty.canUpgrade()) {
+                System.out.println("Upgrading " + selectedProperty.getName());
+                int upgradeCost = selectedProperty.getCost() / 2; // Cost of upgrading property
+
+                if (player.getBalance() >= upgradeCost) {
+                    player.updateBalance(-upgradeCost);
+                    selectedProperty.upgradeProperty();
+                } else {
+                    System.out.println("You don't have enough money to upgrade the property.");
+                }
+            } else {
+                System.out.println("This property cannot be upgraded further.");
+            }
+        } else {
+            System.out.println("Invalid property selection.");
+        }
+    }
+}
 
 class Player {
     String name;
     int balance;
     int position;
     boolean bankrupt;
+    Property[] ownedProperties; // Array of properties owned by the player
+    int propertyCount; // Counter for the number of owned properties
 
     Player(String name, int balance) {
         this.name = name;
         this.balance = balance;
         this.position = 0;
         this.bankrupt = false;
+        this.ownedProperties = new Property[10]; // Max 10 properties for now
+        this.propertyCount = 0; // Initialize property count
     }
 
-    void move(int diceRoll, int boardSize) {
-        this.position = (this.position + diceRoll) % boardSize;
-        System.out.println(name + " moved to position: " + this.position);
+    // Method to set bankruptcy status
+    void setBankrupt(boolean status) {
+        this.bankrupt = status;
+        if (status) {
+            System.out.println(name + " is bankrupt!");
+        }
+    }
+
+    boolean hasProperties() {
+        return propertyCount > 0; // Check if player has any properties
+    }
+
+    void addProperty(Property property) {
+        if (propertyCount < ownedProperties.length) {
+            ownedProperties[propertyCount++] = property; // Add property to owned array
+        }
+    }
+
+    void updateBalance(int amount) {
+        this.balance += amount;
+        if (this.balance < 0) {
+            this.setBankrupt(true);
+        }
+        System.out.println(name + "'s balance is now: " + balance);
+    }
+
+    boolean isBankrupt() {
+        return bankrupt;
     }
 
     String getName() {
@@ -200,25 +245,13 @@ class Player {
         return balance;
     }
 
-    void updateBalance(int amount) {
-        this.balance += amount;
-        System.out.println(name + "'s balance is now: " + balance);
-        if (this.balance < 0) {
-            this.bankrupt = true;
-            System.out.println(name + " is bankrupt!");
-        }
-    }
-
     int getPosition() {
         return position;
     }
 
-    boolean isBankrupt() {
-        return bankrupt;
-    }
-
-    void setBankrupt(boolean bankrupt) {
-        this.bankrupt = bankrupt;
+    void move(int diceRoll, int boardSize) {
+        this.position = (this.position + diceRoll) % boardSize;
+        System.out.println(name + " moved to position: " + this.position);
     }
 }
 
@@ -275,8 +308,8 @@ class Board {
         spaces[35] = new Property("Raipur", 740, 74);
         spaces[36] = new Property("Amritsar", 760, 76);
         spaces[37] = new Property("Udaipur", 780, 78);
-        spaces[38] = new Property("Coimbatore", 800, 80);
-        spaces[39] = new Property("Luxury Tax", 0, 0);
+        spaces[38] = new Property("Dhanbad", 800, 80);
+        spaces[39] = new Property("Kolkata", 820, 82);
     }
 
     Property getSpace(int position) {
@@ -289,20 +322,16 @@ class Board {
 }
 
 class Property {
+    String name;
     int cost;
     int rent;
-    String name;
     Player owner;
-    int houses; // Number of houses on the property
-    boolean hasHotel; // Whether the property has a hotel
 
     Property(String name, int cost, int rent) {
         this.name = name;
         this.cost = cost;
         this.rent = rent;
         this.owner = null;
-        this.houses = 0;
-        this.hasHotel = false;
     }
 
     String getName() {
@@ -329,23 +358,12 @@ class Property {
         return owner != null;
     }
 
-    // Method to upgrade property
-    void upgradeProperty() {
-        if (houses < 4) { // Maximum of 4 houses
-            houses++;
-            rent += 50; // Increase rent by 50 for each house
-            System.out.println(name + " upgraded to house level " + houses + ". New rent is: " + rent);
-        } else if (!hasHotel) {
-            hasHotel = true;
-            rent += 150; // Increase rent by 150 for a hotel
-            System.out.println(name + " upgraded to hotel level. New rent is: " + rent);
-        } else {
-            System.out.println(name + " already has a hotel, can't upgrade further.");
-        }
+    boolean canUpgrade() {
+        return cost > 200 && rent < 100; // Simple condition for upgrade
     }
 
-    // Method to check if property can be upgraded
-    boolean canUpgrade() {
-        return houses < 4 || !hasHotel;
+    void upgradeProperty() {
+        this.rent *= 2; // Doubling rent as an example of upgrading
+        System.out.println(name + " has been upgraded! New rent: " + rent);
     }
 }
