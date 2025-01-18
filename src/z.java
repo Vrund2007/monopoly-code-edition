@@ -34,17 +34,11 @@ class Game {
         // Game loop
         while (!gameover) {
             Player currentPlayer = players[turn % 4];
-            if (currentPlayer.isBankrupt()) {
-                // Skip bankrupt players
-                System.out.println(currentPlayer.getName() + " is bankrupt and cannot take a turn.");
-                turn++;
-                continue;
-            }
-
             System.out.println("\nIt's " + currentPlayer.getName() + "'s turn!");
+
             System.out.print("Press ENTER to roll the dice...");
             sc.nextLine();
-            System.out.println();
+			System.out.println();
 
             int diceRoll = dice.roll();
             System.out.println(currentPlayer.getName() + " rolled a " + diceRoll);
@@ -55,96 +49,78 @@ class Game {
             // Determine the current space
             Property currentSpace = board.getSpace(currentPlayer.getPosition());
             System.out.println(currentPlayer.getName() + " landed on: " + currentSpace.getName());
-            System.out.println();
+			System.out.println();
 
             // Check if the space is a property
             if (currentSpace.getCost() > 0) {
-                if (!currentSpace.isOwned()) {
+				
+                if (currentSpace.isOwned()== false) {
+					
                     System.out.println("The property is unowned and costs " + currentSpace.getCost() + ".");
-
+					
                     if (currentPlayer.getBalance() >= currentSpace.getCost()) {
+						
                         System.out.print("Do you want to buy it? (yes/no): ");
+						
                         String choice = sc.nextLine();
-                        System.out.println();
-
+						System.out.println();
+						
                         if (choice.equalsIgnoreCase("yes")) {
-							currentPlayer.updateBalance(-currentSpace.getCost());
-							currentSpace.setOwner(currentPlayer);
-							System.out.println(currentPlayer.getName() + " bought " + currentSpace.getName() + "!");
-							System.out.println("The property cost: " + currentSpace.getCost());
-							System.out.println("Remaining balance: " + currentPlayer.getBalance());
+                            currentPlayer.updateBalance(-currentSpace.getCost());
+                            currentSpace.setOwner(currentPlayer);
+                            System.out.println(currentPlayer.getName() + " bought " + currentSpace.getName() + "!");
 							System.out.println();
-}
-                    } else {
-                        System.out.println("You don't have enough money to buy this property.");
-                        System.out.println();
-                    }
-                } else {
-                    Player propertyOwner = currentSpace.getOwner();
-                    System.out.println("The property is owned by " + propertyOwner.getName() + ".");
-
-                    if (propertyOwner != currentPlayer) { // Check if the owner is not the current player
-                        int rent = currentSpace.getRent();
-                        System.out.println("You need to pay a rent of " + rent + ".");
-
-                        if (currentPlayer.getBalance() >= rent) {
-                            currentPlayer.updateBalance(-rent);
-                            propertyOwner.updateBalance(rent);
-                            System.out.println(currentPlayer.getName() + " paid " + rent + " to " + propertyOwner.getName() + ".");
-                        } else {
-                            System.out.println(currentPlayer.getName() + " cannot afford the rent of " + rent + ".");
-                            handleBankruptcy(currentPlayer, propertyOwner);
                         }
-                    } else {
-                        System.out.println("This is your own property. Enjoy your stay!");
+						
+                    } 
+					else {
+                        System.out.println("You don't have enough money to buy this property.");
+						System.out.println();
                     }
-                }
-            } else {
+                } 
+				else {
+					Player propertyOwner = currentSpace.getOwner();
+
+					if (propertyOwner != null) { // Ensure the property is owned
+						System.out.println("The property is owned by " + propertyOwner.getName() + ".");
+
+						if (propertyOwner != currentPlayer) { // Check if the owner is not the current player
+							int rent = currentSpace.getRent();
+				
+							// Check if the current player has enough balance to pay the rent
+							if (currentPlayer.getBalance() >= rent) {
+								System.out.println("You need to pay a rent of " + rent + ".");
+								currentPlayer.updateBalance(-rent);
+								propertyOwner.updateBalance(rent);
+								System.out.println(currentPlayer.getName() + " paid " + rent + " to " + propertyOwner.getName() + ".");
+							} 
+							else {
+								System.out.println(currentPlayer.getName() + " cannot afford the rent of " + rent + ".");
+								System.out.println(currentPlayer.getName() + " is bankrupt!");
+								currentPlayer.setBankrupt(true);
+							}
+						} 
+						else {
+							System.out.println("This is your own property. Enjoy your stay!");
+						}
+					} 
+					else {
+						System.out.println("This property is not owned by anyone. You can purchase it!");
+					}
+				}
+            }
+			
+			else {
                 System.out.println("This space is a special tile (e.g., Start, Income Tax, Jail, etc.).");
-            }
-
-            // Check for game over
-            int activePlayersCount = 0;
-            for (Player player : players) {
-                if (!player.isBankrupt()) {
-                    activePlayersCount++;
-                }
-            }
-
-            if (activePlayersCount <= 1) {
-                gameover = true;
-                System.out.println("\nThe game is over!");
-                break;
             }
 
             // End turn
             turn++;
-            System.out.println();
+			System.out.println();
             System.out.println("End of " + currentPlayer.getName() + "'s turn.");
         }
 
-        // Declare the winner
-        for (Player player : players) {
-            if (!player.isBankrupt()) {
-                System.out.println("\nCongratulations! " + player.getName() + " is the winner!");
-            }
-        }
-
         sc.close();
-    }
-
-    void handleBankruptcy(Player bankruptPlayer, Player creditor) {
-        // Transfer properties to the creditor
-        for (int i = 0; i < board.getBoardSize(); i++) {
-            Property property = board.getSpace(i);
-            if (property.getOwner() == bankruptPlayer) {
-                property.setOwner(creditor);
-                System.out.println(creditor.getName() + " now owns " + property.getName() + ".");
-            }
-        }
-
-        // Set the player as bankrupt
-        bankruptPlayer.setBankrupt(true);
     }
 }
 
@@ -185,14 +161,6 @@ class Player {
 
     int getPosition() {
         return position;
-    }
-
-    boolean isBankrupt() {
-        return bankrupt;
-    }
-
-    void setBankrupt(boolean bankrupt) {
-        this.bankrupt = bankrupt;
     }
 }
 
